@@ -1,0 +1,44 @@
+name: Build and Deploy to Cloud Func
+
+on:
+  push:
+    branches:
+      - dev
+
+env:
+  PROJECT_ID: ${{ secrets.PROJECT_ID }}
+  REGION: us-central1
+  RUN_TIME: go113
+  BUCKET_NAME: raw-image-storage
+  ENTRY_POINT: GenThumbnails
+  FUNCTION_NAME: example-gen-thumbnails-func
+
+jobs:
+  setup-build-deploy:
+    name: Setup, and Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      # Setup gcloud CLI
+      - uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
+        with:
+          version: '286.0.0'
+          service_account_email: ${{ secrets.SA_EMAIL }}
+          service_account_key: ${{ secrets.SA_KEY }}
+          project_id: ${{ secrets.PROJECT_ID }}
+
+      # Deploy image to Cloud Run
+      - name: Deploy
+        run: |-
+          gcloud functions deploy "$SERVICE_NAME" \
+            --trigger-resource "$BUCKET_NAME" \
+            --trigger-event google.storage.object.finalize \
+            --memory 128MB \
+            --entry-point "$ENTRY_POINT" \
+            --project ${{ secrets.PROJECT_ID }} \
+            --service-account ${{ secrets.SA_KEY }} \
+            --runtime "$RUN_TIME" \
+            --allow-unauthenticated
