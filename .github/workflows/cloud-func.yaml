@@ -33,10 +33,11 @@ jobs:
       # Deploy image to Cloud Run
       - name: Deploy
         run: |-
-          gcloud functions deploy "$SERVICE_NAME" \
+          gcloud functions deploy "$FUNCTION_NAME" \
             --trigger-resource "$BUCKET_NAME" \
             --trigger-event google.storage.object.finalize \
             --memory 128MB \
+            --region "$REGION" \
             --entry-point "$ENTRY_POINT" \
             --project ${{ secrets.PROJECT_ID }} \
             --service-account ${{ secrets.SA_KEY }} \
