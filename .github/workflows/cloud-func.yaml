@@ -40,6 +40,6 @@ jobs:
             --region "$REGION" \
             --entry-point "$ENTRY_POINT" \
             --project ${{ secrets.PROJECT_ID }} \
-            --service-account ${{ secrets.SA_KEY }} \
+            --service-account ${{ secrets.SA_EMAIL }} \
             --runtime "$RUN_TIME" \
             --allow-unauthenticated
