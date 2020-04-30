@@ -9,7 +9,9 @@ env:
   PROJECT_ID: ${{ secrets.PROJECT_ID }}
   REGION: us-central1
   RUN_TIME: go113
-  BUCKET_NAME: raw-image-storage
+  MEMORY: 128MB
+  TRIGGER_RESOURCE: raw-image-storage
+  TRIGGER_EVENT: google.storage.object.finalize
   ENTRY_POINT: GenThumbnails
   FUNCTION_NAME: example-gen-thumbnails-func
 
@@ -34,9 +36,9 @@ jobs:
       - name: Deploy
         run: |-
           gcloud functions deploy "$FUNCTION_NAME" \
-            --trigger-resource "$BUCKET_NAME" \
-            --trigger-event google.storage.object.finalize \
-            --memory 128MB \
+            --trigger-resource "$TRIGGER_RESOURCE" \
+            --trigger-event "$TRIGGER_EVENT" \
+            --memory "$MEMORY" \
             --region "$REGION" \
             --entry-point "$ENTRY_POINT" \
             --project ${{ secrets.PROJECT_ID }} \
