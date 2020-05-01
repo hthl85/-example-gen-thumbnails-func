@@ -16,6 +16,7 @@
 node_modules
 #!include:.gitignore
 .idea
+.github
 cmd
 LICENSE
 README.md

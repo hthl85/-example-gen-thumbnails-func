@@ -1,58 +1,63 @@
 package thumbnails
 
 import (
+	"cloud.google.com/go/storage"
 	"context"
+	"fmt"
+	"github.com/disintegration/imaging"
+	"image/png"
 	"log"
-	"time"
 )
+
+// Global API clients used across function invocations.
+var (
+	storageClient *storage.Client
+)
+
+func init() {
+	// Declare a separate err variable to avoid shadowing the client variables.
+	var err error
+
+	storageClient, err = storage.NewClient(context.Background())
+	if err != nil {
+		log.Fatalf("storage.NewClient: %v", err)
+	}
+}
 
 // GCSEvent is the payload of a GCS event.
 type GCSEvent struct {
-	Kind                    string                 `json:"kind"`
-	ID                      string                 `json:"id"`
-	SelfLink                string                 `json:"selfLink"`
-	Name                    string                 `json:"name"`
-	Bucket                  string                 `json:"bucket"`
-	Generation              string                 `json:"generation"`
-	Metageneration          string                 `json:"metageneration"`
-	ContentType             string                 `json:"contentType"`
-	TimeCreated             time.Time              `json:"timeCreated"`
-	Updated                 time.Time              `json:"updated"`
-	TemporaryHold           bool                   `json:"temporaryHold"`
-	EventBasedHold          bool                   `json:"eventBasedHold"`
-	RetentionExpirationTime time.Time              `json:"retentionExpirationTime"`
-	StorageClass            string                 `json:"storageClass"`
-	TimeStorageClassUpdated time.Time              `json:"timeStorageClassUpdated"`
-	Size                    string                 `json:"size"`
-	MD5Hash                 string                 `json:"md5Hash"`
-	MediaLink               string                 `json:"mediaLink"`
-	ContentEncoding         string                 `json:"contentEncoding"`
-	ContentDisposition      string                 `json:"contentDisposition"`
-	CacheControl            string                 `json:"cacheControl"`
-	Metadata                map[string]interface{} `json:"metadata"`
-	CRC32C                  string                 `json:"crc32c"`
-	ComponentCount          int                    `json:"componentCount"`
-	Etag                    string                 `json:"etag"`
-	CustomerEncryption      struct {
-		EncryptionAlgorithm string `json:"encryptionAlgorithm"`
-		KeySha256           string `json:"keySha256"`
-	}
-	KMSKeyName    string `json:"kmsKeyName"`
-	ResourceState string `json:"resourceState"`
+	Name           string `json:"name"`
+	Bucket         string `json:"bucket"`
+	Metageneration string `json:"metageneration"`
 }
 
 // GenThumbnails consumes a GCS event.
 func GenThumbnails(ctx context.Context, e GCSEvent) error {
-	if e.ResourceState == "not_exists" {
-		log.Printf("File %v deleted.", e.Name)
-		return nil
+	name := e.Name
+	inputBucket := e.Bucket
+	outputBucket := "thumbnails-storage"
+
+	inputBlob := storageClient.Bucket(inputBucket).Object(name)
+	r, err := inputBlob.NewReader(ctx)
+	if err != nil {
+		return fmt.Errorf("NewReader: %v", err)
 	}
-	if e.Metageneration == "1" {
-		// The metageneration attribute is updated on metadata changes.
-		// The on create value is 1.
-		log.Printf("File %v created.", e.Name)
-		return nil
+
+	outputBlob := storageClient.Bucket(outputBucket).Object(name)
+	w := outputBlob.NewWriter(ctx)
+	defer w.Close()
+
+	img, err := png.Decode(r)
+	if err != nil {
+		return fmt.Errorf("decode: %v", err)
 	}
-	log.Printf("File %v metadata updated.", e.Name)
+
+	thumb := imaging.Resize(img, 100, 0, imaging.CatmullRom)
+
+	err = png.Encode(w, thumb)
+	if err != nil {
+		return fmt.Errorf("encode: %v", err)
+	}
+
 	return nil
 }
