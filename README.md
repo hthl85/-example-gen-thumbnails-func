@@ -1,2 +1,2 @@
-# -example-gen-thumbnails-func
+# example-gen-thumbnails-func
 Example generate thumbnail function
